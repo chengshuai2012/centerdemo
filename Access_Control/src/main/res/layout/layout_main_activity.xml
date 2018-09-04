@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/index_main_bg"
+    android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textView2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="21:06"
+                    android:textColor="@color/white"
+                    android:textSize="80dp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/data_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignEnd="@+id/textView2"
+                    android:layout_below="@+id/textView2"
+                    android:text="02月03日|周六"
+                    android:textColor="@color/white"
+                    android:textSize="25dp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_centerInParent="true"
+                android:orientation="vertical">
+
+                <LinearLayout
+
+                    android:layout_width="match_parent"
+                    android:layout_height="80px"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/bt_main_bind"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/main_botton"
+                        android:gravity="center"
+                        android:paddingBottom="5dp"
+                        android:paddingLeft="5dp"
+                        android:paddingRight="5dp"
+                        android:paddingTop="5dp"
+                        android:text="添加指静脉"
+                        android:textColor="#ffffff"
+                        android:textSize="25sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/bt_main_bind_face"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="20dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/main_botton"
+                        android:gravity="center"
+                        android:paddingBottom="5dp"
+                        android:paddingLeft="5dp"
+                        android:paddingRight="5dp"
+                        android:paddingTop="5dp"
+                        android:text="添加人脸识别"
+                        android:textColor="#ffffff"
+                        android:textSize="25sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+
+            </LinearLayout>
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="100px"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="40px">
+
+        <TextView
+            android:id="@+id/versionName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:layout_marginLeft="10dp"
+            android:text="2.2.4"
+            android:textColor="@color/white"
+            android:textSize="20sp" />
+    </RelativeLayout>
+</RelativeLayout>
