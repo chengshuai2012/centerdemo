@@ -1,15 +1,14 @@
 package com.link.cloud.model;
 
-import com.google.gson.JsonObject;
 import com.link.cloud.bean.CabinetNumberData;
-import com.link.cloud.bean.CodeInfo;
 import com.link.cloud.bean.Code_Message;
 import com.link.cloud.bean.DeviceData;
 import com.link.cloud.bean.DownLoadData;
+import com.link.cloud.bean.FaceBindBean;
 import com.link.cloud.bean.Lockdata;
-import com.link.cloud.bean.MessagetoJson;
-import com.link.cloud.bean.OpenByQrCode;
+import com.link.cloud.bean.Member;
 import com.link.cloud.bean.PagesInfoBean;
+import com.link.cloud.bean.RestResponse;
 import com.link.cloud.bean.ResultHeartBeat;
 import com.link.cloud.bean.ResultResponse;
 import com.link.cloud.bean.Sign_data;
@@ -17,13 +16,6 @@ import com.link.cloud.bean.SyncFeaturesPage;
 import com.link.cloud.bean.SyncUserFace;
 import com.link.cloud.bean.UpDateBean;
 import com.link.cloud.bean.UpdateMessage;
-import com.link.cloud.bean.UserResponse;
-import com.link.cloud.bean.LessonResponse;
-import com.link.cloud.bean.Member;
-import com.link.cloud.bean.RestResponse;
-import com.link.cloud.bean.ReturnBean;
-import com.link.cloud.bean.SignedResponse;
-import com.link.cloud.bean.Voucher;
 
 import rx.Observable;
 
@@ -32,7 +24,7 @@ import rx.Observable;
  */
 public interface IHttpClientHelper {
 
-
+    Observable<Member> bindVeinMemeber(String deviceId,int userType,int numberType,String numberValue,String img1,String img2,String img3,String feature);
     /**
      *
      * @param deviceID  设备ID
@@ -57,7 +49,9 @@ public interface IHttpClientHelper {
      * @return
      */
     Observable<Sign_data>syncSignUserFeature(String deviceId);
-
+    Observable<Member> getMemInfo( String deviceID,int numberType,String numberValue);
+    Observable<FaceBindBean> bindFace(String deviceID, int numberType, String numberValue, int userType, String path,String faceFile);
+    Observable<FaceBindBean> getMemFace(String deviceID, int numberType, String numberValue);
     /**
      * 发送日志信息
      * @param deviceId

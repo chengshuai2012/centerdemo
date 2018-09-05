@@ -7,14 +7,11 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.database.sqlite.SQLiteDatabase;
 import android.hardware.Camera;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
 import android.support.multidex.MultiDex;
 import android.support.multidex.MultiDexApplication;
 import android.util.Log;
@@ -39,9 +36,6 @@ import com.link.cloud.bean.DownLoadData;
 import com.link.cloud.bean.PagesInfoBean;
 import com.link.cloud.bean.Person;
 import com.link.cloud.bean.PushMessage;
-import com.link.cloud.bean.PushUpDateBean;
-import com.link.cloud.bean.SignUser;
-import com.link.cloud.bean.Sign_data;
 import com.link.cloud.bean.SyncFeaturesPage;
 import com.link.cloud.bean.SyncUserFace;
 import com.link.cloud.bean.UpDateBean;
@@ -49,7 +43,6 @@ import com.link.cloud.component.TimeService;
 import com.link.cloud.constant.Constant;
 import com.link.cloud.contract.DownloadFeature;
 import com.link.cloud.contract.GetDeviceIDContract;
-import com.link.cloud.contract.SyncUserFeature;
 import com.link.cloud.utils.DownLoad;
 import com.link.cloud.utils.DownloadUtils;
 import com.link.cloud.utils.FaceDB;
@@ -67,43 +60,31 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import io.realm.Realm;
-import io.realm.RealmChangeListener;
-import io.realm.RealmConfiguration;
-import io.realm.RealmResults;
 /**
  * Description：BaseApplication
  * Created by Shaozy on 2016/8/10.
  */
-public class BaseApplication extends MultiDexApplication  implements GetDeviceIDContract.VersoinUpdate,DownloadFeature.download,SyncUserFeature.syncUser{
+public class BaseApplication extends MultiDexApplication  implements GetDeviceIDContract.VersoinUpdate,DownloadFeature.download{
     public static boolean DEBUG = false;
     private static BaseApplication ourInstance = new BaseApplication();
     public boolean log = true;
-    public boolean flag;
-    public  static String messgetext;
     public Gson gson;
     private static Context context;
     public static final long ONE_KB = 1024L;
     public static final long ONE_MB = ONE_KB * 1024L;
     public static final long CACHE_DATA_MAX_SIZE = ONE_MB * 3L;
     private static final String TAG = "BaseApplication";
-//    static String string;static int type;
    static LockActivity mainActivity=null;
-    private Realm realm;
 
     public static BaseApplication getInstance() {
         return ourInstance;
     }
     String deviceTargetValue;
-    private SQLiteDatabase db;
     GetDeviceIDContract presenter;
     public static BaseApplication instances;
     private static LockActivity mainAcivity;
    static DownloadFeature feature;
-   static SyncUserFeature syncUserFeature;
 
     public FaceDB mFaceDB;
     @Override
@@ -119,23 +100,12 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
     public void onCreate() {
         super.onCreate();
         CrashReport.initCrashReport(getApplicationContext(), "62ab7bf668", true);
-        //        CrashHandler.getInstance().init(this);
-        //        LogcatHelper.getInstance(this).start();
         feature=new DownloadFeature();
         feature.attachView(this);
-        syncUserFeature=new SyncUserFeature();
-        syncUserFeature.attachView(this);
         instances = this;
         ourInstance = this;
         mFaceDB = new FaceDB(Environment.getExternalStorageDirectory().getAbsolutePath() + "/faceFile");
          context=getApplicationContext();
-        Realm.init(this);
-//自定义配置
-        RealmConfiguration configuration = new RealmConfiguration.Builder()
-                .name("myRealm.realm")
-                .deleteRealmIfMigrationNeeded()
-                .build();
-        Realm.setDefaultConfiguration(configuration);
         Thread.setDefaultUncaughtExceptionHandler(restartHandler);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
@@ -180,14 +150,6 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
         Intent intent = new Intent(getApplicationContext(), TimeService.class);
         startService(intent);
         ifspeaking();
-        realm = Realm.getDefaultInstance();
-        RealmResults<Person> allAsync = realm.where(Person.class).findAllAsync();
-        allAsync.addChangeListener(new RealmChangeListener<RealmResults<Person>>() {
-            @Override
-            public void onChange(RealmResults<Person> peoples) {
-                people.addAll(realm.copyFromRealm(peoples));
-            }
-        });
         this.initGson();
         this.initReservoir();
         this.initCCPRestSms();
@@ -293,7 +255,7 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
         param.append("appid="+getString(R.string.app_id));
         param.append(",");
         // 设置使用v5+
-        param.append(SpeechConstant.ENGINE_MODE+"="+SpeechConstant.MODE_MSC);
+        param.append(SpeechConstant.ENGINE_MODE+"="+ SpeechConstant.MODE_MSC);
         SpeechUtility.createUtility(BaseApplication.this, param.toString());
     }
     public String getMac(){
@@ -348,18 +310,7 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
 
     @Override
     public void syncUserFacePagesSuccess(SyncUserFace resultResponse) {
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        for(int x =0;x<resultResponse.getData().size();x++){
 
-            int finalX = x;
-            Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    DownLoad.download(resultResponse.getData().get(finalX).getFaceUrl(),resultResponse.getData().get(finalX).getUid());
-                }
-            };
-            service.execute(runnable);
-        }
     }
 
     private void downLoadApk(String downloadurl) {
@@ -387,45 +338,7 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
             return 0;
         }
     }
-    @Override
-    public void downloadSuccess(DownLoadData resultResponse) {
-        RealmResults<Person> uid = realm.where(Person.class).equalTo("uid", resultResponse.getData().get(0).getUid()).findAll();
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for(int x=0;x<uid.size();x++){
-                    uid.deleteAllFromRealm();
-                }
-            }
-        });
-        people.addAll(resultResponse.getData());
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for(int x= 0;x<resultResponse.getData().size();x++){
-                    realm.copyToRealm(resultResponse.getData().get(x));
-                }
-            }
-        });
 
-    }
-    @Override
-    public void downloadNotReceiver(DownLoadData resultResponse) {
-        if(resultResponse.getData().size()>0){
-            people.addAll(resultResponse.getData());
-        }
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for(int x= 0;x<resultResponse.getData().size();x++){
-                    realm.copyToRealm(resultResponse.getData().get(x));
-                }
-            }
-        });
-    }
-    public SQLiteDatabase getDb() {
-        return db;
-    }
     private void initGson() {
         this.gson = new GsonBuilder().setDateFormat(Constant.BASE_DATA_FORMAT).create();
     }
@@ -529,6 +442,7 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
                     public void run() {
                         deviceTargetValue = Utils.getMD5(getMac());
                         presenter.getDeviceID(deviceTargetValue,2);
+                        Log.e(TAG, "init cloudchannel success");
                     }
                 }).start();
             }
@@ -544,154 +458,45 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
     }
     @Override
     public void onError(ApiException e) {
-        if (downLoadListner!=null) {
-            downLoadListner.finish();
-        }
+
     }
     @Override
     public void onPermissionError(ApiException e) {
         onError(e);
     }
-    @Override
-    public void syncUserSuccess(DownLoadData resultResponse) {
-        List<Person> data = resultResponse.getData();
-        RealmResults<Person> all = realm.where(Person.class).findAll();
-        people.addAll(resultResponse.getData());
-        Logger.e(">>>>>>>"+all.size());
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                all.deleteAllFromRealm();
-            }
-        });
-        Realm.getDefaultInstance().executeTransactionAsync(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for (int x = 0; x < data.size(); x++) {
-                    realm.copyToRealm(data.get(x));
-                }
-            }
-        }, new Realm.Transaction.OnSuccess() {
-            @Override
-            public void onSuccess() {
-                Logger.e(">>>>>>>onSuccess");
-                if(downLoadListner!=null){
-                    downLoadListner.finish();
-                }
-            }
-        }, new Realm.Transaction.OnError() {
-            @Override
-            public void onError(Throwable throwable) {
-                Logger.e(">>>>>>>onError");
-                if(downLoadListner!=null){
-                    downLoadListner.finish();
-                }
-            }
-        });
-//        TTSUtils.getInstance().speak("初始化成功");
-        NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-        if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
 
-        }else {
-            Toast.makeText(getContext(), getResources().getString(R.string.network_error), Toast.LENGTH_LONG).show();
-        }
-        if(downLoadListner!=null){
-            downLoadListner.finish();
-        }
+
+
+
+    @Override
+    public void syncUserFeaturePagesSuccess(SyncFeaturesPage syncFeaturesPage) {
+
     }
 
-    ArrayList<Person> SyncFeaturesPages = new ArrayList<>();
-    int totalPage=0,currentPage=1,downloadPage=0;
     @Override
     public void getPagesInfo(PagesInfoBean resultResponse) {
-        totalPage = resultResponse.getData().getPageCount();
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        for(int x =0 ;x<resultResponse.getData().getPageCount();x++){
-            Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    feature.syncUserFeaturePages(FileUtils.loadDataFromFile(getContext(), "deviceId.text"), currentPage++);
-                }
-            };
-            service.execute(runnable);
-        }
+
 
     }
 
     @Override
-    public void syncUserFeaturePagesSuccess(SyncFeaturesPage resultResponse) {
-        if (resultResponse.getData().size()>0) {
-            downloadPage++;
-            Logger.e(resultResponse.getData().size() + getResources().getString(R.string.syn_data)+"current");
-            SyncFeaturesPages.addAll(resultResponse.getData());
-            Logger.e(SyncFeaturesPages.size() + getResources().getString(R.string.syn_data)+"total");
-            if (downloadPage == totalPage) {
-                people.addAll(SyncFeaturesPages);
-                realm.executeTransactionAsync(new Realm.Transaction() {
-                    @Override
-                    public void execute(Realm realm) {
-                        for(int x= 0;x<SyncFeaturesPages.size();x++){
-                            realm.copyToRealm(SyncFeaturesPages.get(x));
-                        }
-                    }
-                });
-                Logger.e(SyncFeaturesPages.size() + getResources().getString(R.string.syn_data));
-                NetworkInfo info = connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-                if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
+    public void downloadSuccess(DownLoadData resultResponse) {
 
-                } else {
-                    Toast.makeText(getContext(), getResources().getString(R.string.syn_data), Toast.LENGTH_LONG).show();
-                }
-                if (downLoadListner != null) {
-                    downLoadListner.finish();
-                }
-            }
-        }else {
-            if (downLoadListner != null) {
-                downLoadListner.finish();
-            }
-        }
     }
+
+    @Override
+    public void downloadNotReceiver(DownLoadData resultResponse) {
+
+    }
+
     public static final String COUNT_CHANGE = "change_count";
-    Handler handler = new Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            Logger.e("downloadNotReceiver>>>>>>>>>>>>>>>>>>>>>>>>");
-            handler.removeCallbacksAndMessages(null);
-            String s = FileUtils.loadDataFromFile(getContext(), "deviceId.text");
-            connectivityManager =(ConnectivityManager)getContext().getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-            NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-            if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-                    feature.downloadNotReceiver(s);
-            }else {
-                Toast.makeText(getContext(), getResources().getString(R.string.syn_data), Toast.LENGTH_LONG).show();
-            }
-            handler.sendEmptyMessageDelayed(0,30*1000);
-        }
-    };
-    public downloafinish downLoadListner;
-    public void setDownLoadListner(downloafinish downLoadListner){
-        this.downLoadListner=downLoadListner;
-   }
 
-    @Override
-    public void syncSignUserSuccess(Sign_data downLoadData) {
-        List<SignUser> data = downLoadData.getData();
 
-        realm.executeTransactionAsync(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                for(int x= 0;x<data.size();x++){
-                    realm.copyToRealm(data.get(x));
-                }
-            }
-        });
-    }
+
 ConnectivityManager connectivityManager;
     @Override
     public void getDeviceSuccess(DeviceData deviceData) {
-        feature.appUpdateInfo(deviceData.getDeviceData().getDeviceId());
+
        Logger.e("BaseApplication+devicedate"+deviceData.getDeviceData().getDeviceId()+"numberType"+deviceData.getDeviceData().getNumberType());
             SharedPreferences userInfo = getSharedPreferences("user_info",MODE_MULTI_PROCESS);
             SharedPreferences.Editor editor=userInfo.edit();
@@ -712,18 +517,7 @@ ConnectivityManager connectivityManager;
                     NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
                     if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
                     String  deviceID= FileUtils.loadDataFromFile(getContext(),"deviceId.text");
-                    if (downLoadListner!=null) {
-                        downLoadListner.start();
-                    }
-                        long count = Realm.getDefaultInstance().where(Person.class).count();
-                    if (count==0) {
-                        syncUserFeature.syncSign(deviceID);
-                        syncUserFeature.syncUser(deviceID);
-//                        feature.getPagesInfo(deviceID);
-                        handler.sendEmptyMessageDelayed(0,1000);
-                        //                        syncUserFeature.syncUser(deviceID);
-                    }else {
-                    }
+
                     Logger.e(TAG + "init cloudchannel bindAccount" +"deviceTargetValue:" + deviceData.getDeviceData().getDeviceId());
                     }else {
                         Toast.makeText(getContext(), getResources().getString(R.string.network_error), Toast.LENGTH_LONG).show();
@@ -738,47 +532,16 @@ ConnectivityManager connectivityManager;
         mainActivity = activity;
     }
     static PushMessage pushMessage;
-    public  static  Realm realm1;
+
     public static void setConsoleText(String text) {
-        if(realm1==null){
-            realm1 =  Realm.getDefaultInstance();
-        }
+
         Logger.e("BaseApplication setConsoleText===================="+text);
         pushMessage=toJsonArray(text);
-        String deviceId=FileUtils.loadDataFromFile(getContext(),"deviceId.text");
-        if ("1".equals(pushMessage.getType())) {
-            feature.download(pushMessage.getMessageId(), pushMessage.getAppid(), pushMessage.getShopId(), FileUtils.loadDataFromFile(getContext(), "deviceId.text"), pushMessage.getUid());
-        } else if ("9".equals(pushMessage.getType())) {
-            realm1.executeTransaction(new Realm.Transaction() {
-                @Override
-                public void execute(Realm realm) {
-                    SignUser signUser = new SignUser();
-                    signUser.setUid(pushMessage.getUid());
-                    realm.copyToRealm(signUser);
-                }
-            });
-        }else if("10".equals(pushMessage.getType())){
+       if("10".equals(pushMessage.getType())){
             if(Camera.getNumberOfCameras()!=0){
                 Gson gson = new Gson();
                 BindFaceMes bindFaceMes = gson.fromJson(text, BindFaceMes.class);
                 DownLoad.download(bindFaceMes.getFaceUrl(),bindFaceMes.getUid());
-            }
-        }
-        if("4".equals(pushMessage.getType())){
-            Gson gson = new Gson();
-            PushUpDateBean pushUpDateBean = gson.fromJson(text, PushUpDateBean.class);
-            int device_type_id = pushUpDateBean.getDevice_type_id();
-            if(device_type_id==4){
-                if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                    File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "lingxi.apk");
-                    if (file.exists()) {
-                        file.delete();
-                    }
-                    Toast.makeText(getContext(), "通知栏下载中", Toast.LENGTH_SHORT).show();
-                    DownloadUtils utils = new DownloadUtils(getContext());
-                    utils.downloadAPK(pushUpDateBean.getPackage_path(), "lingxi.apk");
-                    Logger.e(file.getAbsolutePath());
-                }
             }
         }
     }
@@ -796,10 +559,6 @@ ConnectivityManager connectivityManager;
             e.printStackTrace();
         }
         return pushMessage;
-    }
-    public interface downloafinish{
-        void finish();
-        void start();
     }
 
 }

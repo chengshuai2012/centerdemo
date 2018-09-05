@@ -1,38 +1,31 @@
 package com.link.cloud.model.impl;
 
-import android.widget.EditText;
-
 import com.google.gson.JsonObject;
+import com.link.cloud.base.BaseApi;
 import com.link.cloud.bean.CabinetNumberData;
 import com.link.cloud.bean.Code_Message;
 import com.link.cloud.bean.DeviceData;
 import com.link.cloud.bean.DownLoadData;
+import com.link.cloud.bean.FaceBindBean;
 import com.link.cloud.bean.Lockdata;
-import com.link.cloud.bean.MessagetoJson;
-import com.link.cloud.bean.OpenByQrCode;
+import com.link.cloud.bean.Member;
 import com.link.cloud.bean.PagesInfoBean;
+import com.link.cloud.bean.RestResponse;
 import com.link.cloud.bean.ResultHeartBeat;
 import com.link.cloud.bean.ResultResponse;
 import com.link.cloud.bean.Sign_data;
 import com.link.cloud.bean.SyncFeaturesPage;
 import com.link.cloud.bean.SyncUserFace;
 import com.link.cloud.bean.UpDateBean;
-import com.orhanobut.logger.Logger;
-import com.link.cloud.base.RestApi;
-import com.link.cloud.base.BaseApi;
-import com.link.cloud.bean.CodeInfo;
 import com.link.cloud.bean.UpdateMessage;
-import com.link.cloud.bean.UserResponse;
-import com.link.cloud.bean.LessonResponse;
-import com.link.cloud.bean.Member;
-import com.link.cloud.bean.RestResponse;
-import com.link.cloud.bean.ReturnBean;
-import com.link.cloud.bean.SignedResponse;
-import com.link.cloud.bean.Voucher;
 import com.link.cloud.model.IHttpClientHelper;
+import com.orhanobut.logger.Logger;
 
-import java.util.concurrent.ExecutionException;
+import java.io.File;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import rx.Observable;
 
 /**
@@ -44,6 +37,68 @@ public class HttpClientHelper implements IHttpClientHelper {
 
     public static HttpClientHelper getInstance() {
         return ourInstance;
+    }
+    @Override
+    public Observable<Member> bindVeinMemeber( String deviceId,int userType,int numberType,String numberValue,String img1,String img2,String img3, String feature) {
+        JsonObject params = new JsonObject();
+        try {
+            params.addProperty("deviceId", deviceId);
+            params.addProperty("userType",userType);
+            params.addProperty("numberType",numberType);
+            params.addProperty("numberValue",numberValue);
+            params.addProperty("feature1",img1);
+            params.addProperty("feature2",img2);
+            params.addProperty("feature3",img3);
+            params.addProperty("feature", feature);
+        } catch (Exception e) {
+            Logger.e("HttpClientHelper"+e.getMessage());
+        }
+        return BaseApi.getInstance().getBaseService().bindVeinMemeber(params);
+    }
+    @Override
+    public Observable<Member> getMemInfo(String deviceID,int numberType,String numberValue) {
+        JsonObject params = new JsonObject();
+        try {
+            params.addProperty("deviceId", deviceID);
+            params.addProperty("numberType",numberType);
+            params.addProperty("numberValue", numberValue);
+        } catch (Exception e) {
+            Logger.e("HttpClientHelper"+e.getMessage());
+        }
+        return BaseApi.getInstance().getBaseService().getMemInfo(params);
+    }
+    @Override
+    public Observable<FaceBindBean> bindFace(String deviceId, int numberType, String numberValue, int userType, String path,String faceFile) {
+
+        RequestBody requestdeviceId = RequestBody.create(MediaType.parse("multipart/form-data"), deviceId);
+        RequestBody requestnumberType = RequestBody.create(MediaType.parse("multipart/form-data"), numberType+"");
+        RequestBody requestnumberValue = RequestBody.create(MediaType.parse("multipart/form-data"), numberValue);
+        RequestBody requestuserType = RequestBody.create(MediaType.parse("multipart/form-data"), userType+"");
+        RequestBody link = RequestBody.create(MediaType.parse("multipart/form-data"), "link");
+        RequestBody key = RequestBody.create(MediaType.parse("multipart/form-data"), "848ec6fa44ac6bae");
+        RequestBody dateTme = RequestBody.create(MediaType.parse("multipart/form-data"), "1512028642184");
+        RequestBody sign = RequestBody.create(MediaType.parse("multipart/form-data"), "cc5224ee3e9f2e2089624f676d840524");
+        File file =new File(path);
+        RequestBody requestImgFile = RequestBody.create(MediaType.parse("multipart/form-data"), file);
+        MultipartBody.Part requestImgPart = MultipartBody.Part.createFormData("imgFile", file.getName(), requestImgFile);
+        File file2 =new File(faceFile);
+        RequestBody requestfacedata = RequestBody.create(MediaType.parse("multipart/form-data"), file2);
+        MultipartBody.Part facedataPart = MultipartBody.Part.createFormData("file", file2.getName(), requestfacedata);
+
+        return BaseApi.getInstance().getBaseService().bindFace(requestdeviceId,requestuserType,requestnumberValue,requestnumberType,link,key,dateTme,sign,requestImgPart,facedataPart);
+    }
+
+    @Override
+    public Observable<FaceBindBean> getMemFace(String deviceID, int numberType, String numberValue) {
+        JsonObject params = new JsonObject();
+        try {
+            params.addProperty("deviceId", deviceID);
+            params.addProperty("numberType",numberType);
+            params.addProperty("numberValue", numberValue);
+        } catch (Exception e) {
+            Logger.e("HttpClientHelper"+e.getMessage());
+        }
+        return BaseApi.getInstance().getBaseService().getMemFace(params);
     }
 
     public HttpClientHelper() {

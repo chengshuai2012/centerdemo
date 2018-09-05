@@ -1,26 +1,14 @@
 package com.link.cloud.utils;
-import android.content.SharedPreferences;
+
 import android.util.Log;
 
 import com.link.cloud.BaseApplication;
 import com.link.cloud.activity.LockActivity;
 import com.link.cloud.bean.Person;
-import com.orhanobut.logger.Logger;
 
-import org.apache.commons.lang.StringUtils;
-
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
-import io.realm.OrderedCollectionChangeSet;
-import io.realm.OrderedRealmCollectionChangeListener;
-import io.realm.Realm;
-import io.realm.RealmChangeListener;
-import io.realm.RealmResults;
 import md.com.sdk.MicroFingerVein;
 
 import static com.alibaba.sdk.android.ams.common.util.HexUtil.hexStringToByte;

@@ -115,17 +115,17 @@ public class BaseApi {
             long t2 = System.nanoTime();
             double time = (t2 - t1) / 1e6d;
 
-//            if (BaseApplication.getInstance().log) {
-//                if (request.method().equals("GET")) {
-//                    Logger.e(String.format("GET " + F_REQUEST_WITHOUT_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), originalResponse.code(), originalResponse.headers()));
-//                } else if (request.method().equals("POST")) {
-//                    Logger.e(String.format("POST " + F_REQUEST_WITH_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), postBody.toString(), originalResponse.code(), originalResponse.headers()));
-//                } else if (request.method().equals("PUT")) {
-//                    Logger.e(String.format("PUT " + F_REQUEST_WITH_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), postBody.toString(), originalResponse.code(), originalResponse.headers()));
-//                } else if (request.method().equals("DELETE")) {
-//                    Logger.e(String.format("DELETE " + F_REQUEST_WITHOUT_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), originalResponse.code(), originalResponse.headers()));
-//                }
-//            }
+            if (BaseApplication.getInstance().log) {
+                if (request.method().equals("GET")) {
+                    Logger.e(String.format("GET " + F_REQUEST_WITHOUT_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), originalResponse.code(), originalResponse.headers()));
+                } else if (request.method().equals("POST")) {
+                    Logger.e(String.format("POST " + F_REQUEST_WITH_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), postBody.toString(), originalResponse.code(), originalResponse.headers()));
+                } else if (request.method().equals("PUT")) {
+                    Logger.e(String.format("PUT " + F_REQUEST_WITH_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), postBody.toString(), originalResponse.code(), originalResponse.headers()));
+                } else if (request.method().equals("DELETE")) {
+                    Logger.e(String.format("DELETE " + F_REQUEST_WITHOUT_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), originalResponse.code(), originalResponse.headers()));
+                }
+            }
             return originalResponse;
         }
 

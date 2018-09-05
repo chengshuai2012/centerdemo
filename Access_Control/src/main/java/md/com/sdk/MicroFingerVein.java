@@ -1,9 +1,9 @@
 package md.com.sdk;
 
 import android.content.Context;
-import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Handler;
+
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
@@ -68,7 +68,7 @@ public class MicroFingerVein {
     public MicroFingerVein(Context _ctx){
         ctx=_ctx;
         mUsbManager=(UsbManager)ctx.getSystemService(Context.USB_SERVICE);
-        UsbDeviceConnection  uc;
+        android.hardware.usb.UsbDeviceConnection uc;
     }
 
     private MicroFingerVein(){
@@ -82,7 +82,7 @@ public class MicroFingerVein {
         int usbHandel=fvdevOpen(index);
         if(usbHandel==0){
             return false;
-        }
+    }
         mapHandle.put(index,usbHandel);
         return true;
     }
@@ -186,7 +186,7 @@ public class MicroFingerVein {
     }
 
     static public  int               debugLevel=0;
-    static public  String             debugStr;
+    static public String debugStr;
     static private native int       fvdevGetCount();
     static private native int       fvdevOpen(int index);
     static private native boolean  fvdevGetState(int h,int []state);

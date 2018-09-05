@@ -1,33 +1,22 @@
 package com.link.cloud.activity;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Toast;
-
 
 import com.link.cloud.BaseApplication;
 import com.link.cloud.R;
-import com.link.cloud.bean.Person;
 import com.link.cloud.constant.Constant;
 import com.link.cloud.utils.ReservoirUtils;
 import com.link.cloud.utils.Utils;
 import com.link.cloud.view.ExitAlertDialog;
 import com.orhanobut.logger.Logger;
-
-import java.util.List;
-
-import io.realm.Realm;
 
 /**
  * Created by Administrator on 2017/8/16.
@@ -35,7 +24,6 @@ import io.realm.Realm;
 public class WelcomeActivity extends Activity {
     ExitAlertDialog exitAlertDialog;
     BaseApplication baseApplication;
-    MesReceiver mesReceiver;
     ConnectivityManager connectivityManager;
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -55,39 +43,14 @@ public class WelcomeActivity extends Activity {
         exitAlertDialog=new ExitAlertDialog(this);
         exitAlertDialog.setCanceledOnTouchOutside(false);
         exitAlertDialog.setCancelable(false);
-        baseApplication.setDownLoadListner(new BaseApplication.downloafinish() {
-            @Override
-            public void finish() {
-                exitAlertDialog.dismiss();
-                handler.sendEmptyMessageDelayed(0,3000);
-            }
-            @Override
-            public void start() {
-            }
-        });
+
         connectivityManager =(ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);//获取当前网络的连接服务
-        NetworkInfo info =connectivityManager.getActiveNetworkInfo(); //获取活动的网络连接信息
-        if (info != null) {   //当前没有已激活的网络连接（表示用户关闭了数据流量服务，也没有开启WiFi等别的数据服务）
-            long count = Realm.getDefaultInstance().where(Person.class).count();
-           if(count==0) {
-               exitAlertDialog.show();
-           }else {
-               handler.sendEmptyMessageDelayed(0,3000);
-           }
-        }else {
-            handler.sendEmptyMessageDelayed(0,3000);
-            Toast.makeText(this, "网络已断开，请查看网络", Toast.LENGTH_LONG).show();
-        }
+
+        handler.sendEmptyMessageDelayed(0,2000);
+
     }
 //    MesReceiver mesReceiver;
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mesReceiver = new MesReceiver();
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(WorkService.ACTION_NET);
-        registerReceiver(mesReceiver, intentFilter);
-    }
+
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -125,21 +88,9 @@ public class WelcomeActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mesReceiver);
+
     }
 
-    /**
-     * 广播接收器
-     *
-     * @author kevin
-     */
-    public class MesReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Logger.e("MesReceiver"+"=================="+intent.getStringExtra("Network"));
-//            if ("1".equals(intent.getStringExtra("Network"))){
-                    exitAlertDialog.dismiss();
-//            }
-        }
-    }
+
+
 }

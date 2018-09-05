@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -13,6 +14,7 @@ import com.link.cloud.R;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 
 /**
@@ -20,6 +22,7 @@ import butterknife.ButterKnife;
  */
 
 public class NewMainActivity extends AppCompatActivity {
+    public static final String ACTION_UPDATEUI = "com.link.cloud.updateTiem";
     @Bind(R.id.textView2)
     TextView textView2;
     @Bind(R.id.data_time)
@@ -35,6 +38,19 @@ public class NewMainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.layout_main_activity);
         ButterKnife.bind(this);
+    }
+    @OnClick({R.id.bt_main_bind,R.id.bt_main_bind_face})
+    public void onClick(View view){
+        switch (view.getId()){
+                case R.id.bt_main_bind:
+                    startActivity(new Intent(this,BindAcitvity.class));
+                break;
+                case R.id.bt_main_bind_face:
+                    startActivity(new Intent(this,BindFaceActivity.class));
+                break;
+
+        }
+
     }
 
     /**
