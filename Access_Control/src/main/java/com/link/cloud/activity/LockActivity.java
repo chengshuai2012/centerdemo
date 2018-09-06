@@ -369,12 +369,19 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     private boolean bOpen = false;//设备是否打开
     private int[] pos = new int[1];
     private float[] score = new float[1];
+    long startTime;
     private boolean ret;
     private ModelImgMng modelImgMng = new ModelImgMng();
     private int[] tipTimes = {0, 0};//后两次次建模时用了不同手指或提取特征识别时，最多重复提醒限制3次
     private int lastTouchState = 0;//记录上一次的触摸状态
     private int modOkProgress = 0;
     public int getState() {
+        long endTime = System.currentTimeMillis();
+        if(endTime-startTime<1000){
+            workHandler.removeCallbacksAndMessages(null);
+            return 6;
+        }
+        startTime =System.currentTimeMillis();
         if (!bOpen) {
             modOkProgress = 0;
             modelImgMng.reset();
@@ -691,6 +698,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                         }else {
                             userInfo.edit().putString("devicepwd",pwd).commit();
                             ToastUtils.show(mContext, getResources().getString(R.string.chang_pwd_successful), ToastUtils.LENGTH_SHORT);
+                            this.dismiss();
                         }
                     }
                     break;
