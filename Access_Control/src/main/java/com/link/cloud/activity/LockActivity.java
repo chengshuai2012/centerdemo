@@ -2,11 +2,16 @@ package com.link.cloud.activity;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.app.Service;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
@@ -16,6 +21,9 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -35,6 +43,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.alibaba.sdk.android.ams.common.util.HexUtil;
 import com.anupcowkur.reservoir.Reservoir;
 import com.arcsoft.ageestimation.ASAE_FSDKEngine;
 import com.arcsoft.ageestimation.ASAE_FSDKError;
@@ -88,10 +97,11 @@ import com.link.cloud.utils.APKVersionCodeUtils;
 import com.link.cloud.utils.FaceDB;
 import com.link.cloud.utils.ToastUtils;
 import com.link.cloud.utils.Utils;
+import com.link.cloud.venue.MdDevice;
+import com.link.cloud.venue.MdUsbService;
+import com.link.cloud.venue.ModelImgMng;
 import com.link.cloud.view.ExitAlertDialog;
 import com.orhanobut.logger.Logger;
-
-import org.greenrobot.eventbus.EventBus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,6 +111,7 @@ import butterknife.Bind;
 import butterknife.OnClick;
 import io.realm.Realm;
 import io.realm.RealmResults;
+import md.com.sdk.MicroFingerVein;
 
 /**
  * Created by 30541 on 2018/3/12.
@@ -127,11 +138,12 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     @Bind(R.id.textView2)
     TextView textView2;
     @Bind(R.id.text_error)
-    TextView text_error;
+    TextView textError;
+    @Bind(R.id.versionName)
+    TextView versionName;
     IsopenCabinet isopenCabinet;
     private ArrayList<Fragment> mFragmentList = new ArrayList<Fragment>();
     int state =0;
-    boolean ret = false;
     SyncUserFeature syncUserFeature;
     String deviceId;
     public MesReceiver mesReceiver;
@@ -145,7 +157,6 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     private final static float IDENTIFY_SCORE_THRESHOLD=0.63f;//认证通过的得分阈值，超过此得分才认为认证通过；
     SharedPreferences userinfo;
     String gpiotext="";
-    String TAG="LockActivity";
     private UsbDeviceConnection usbDevConn;
     ExitAlertDialog exitAlertDialog;
     // 语音合成对象
@@ -163,14 +174,144 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     private Toast mToast;
     private SharedPreferences mSharedPreferences;
     private Realm realm;
-    private RealmResults<Person> all;
+    private RealmResults<Person> allAsync;
+    private List<MdDevice> mdDevicesList = new ArrayList<MdDevice>();
+    private final int MSG_REFRESH_LIST = 0;
+    private List<MdDevice> getDevList() {
+
+        List<MdDevice> mdDevList = new ArrayList<MdDevice>();
+
+        if (mdDeviceBinder != null) {
+
+            int deviceCount = MicroFingerVein.fvdev_get_count();
+
+            for (int i = 0; i < deviceCount; i++) {
+
+                MdDevice mdDevice = new MdDevice();
+
+                mdDevice.setNo(i);
+
+                mdDevice.setIndex(mdDeviceBinder.getDeviceNo(i));
+
+                mdDevList.add(mdDevice);
+
+            }
+
+        } else {
+
+            Log.e(TAG, "microFingerVein not initialized by MdUsbService yet,wait a moment...");
+
+        }
+
+        return mdDevList;
+
+    }
+    public static MdDevice mdDevice;
+
+    public MdUsbService.MyBinder mdDeviceBinder;
+    private Handler listManageH = new Handler(new Handler.Callback() {
+
+        @Override
+
+        public boolean handleMessage(Message msg) {
+
+            switch (msg.what) {
+
+                case MSG_REFRESH_LIST: {
+
+                    mdDevicesList.clear();
+
+                    mdDevicesList = getDevList();
+
+                    if (mdDevicesList.size() > 0) {
+
+                        mdDevice = mdDevicesList.get(0);
+
+                    } else {
+
+                        listManageH.sendEmptyMessageDelayed(MSG_REFRESH_LIST, 1500L);
+
+                    }
+
+                    break;
+
+                }
+
+            }
+
+            return false;
+
+        }
+
+    });
+    private String TAG = "BindActivity";
+
+    private ServiceConnection mdSrvConn = new ServiceConnection() {
+
+        @Override
+
+        public void onServiceConnected(ComponentName name, IBinder service) {
+
+            mdDeviceBinder = (MdUsbService.MyBinder) service;
+
+
+            if (mdDeviceBinder != null) {
+
+                mdDeviceBinder.setOnUsbMsgCallback(mdUsbMsgCallback);
+
+                listManageH.sendEmptyMessage(MSG_REFRESH_LIST);
+
+                Log.e(TAG, "bind MdUsbService success.");
+                workHandler.sendEmptyMessage(19);
+
+            } else {
+
+                Log.e(TAG, "bind MdUsbService failed.");
+
+                finish();
+
+            }
+
+        }
+
+        @Override
+
+        public void onServiceDisconnected(ComponentName name) {
+
+            Log.e(TAG, "disconnect MdUsbService.");
+
+        }
+
+
+    };
+    private MdUsbService.UsbMsgCallback mdUsbMsgCallback = new MdUsbService.UsbMsgCallback() {
+
+        @Override
+
+        public void onUsbConnSuccess(String usbManufacturerName, String usbDeviceName) {
+
+            String newUsbInfo = "USB厂商：" + usbManufacturerName + "  \nUSB节点：" + usbDeviceName;
+
+            Log.e(TAG, newUsbInfo);
+
+        }
+
+        @Override
+
+        public void onUsbDisconnect() {
+
+            Log.e(TAG, "USB连接已断开");
+
+
+        }
+
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         baseApplication=(BaseApplication)getApplication();
-        EventBus.getDefault().register(this);
         // 初始化合成对象
         Log.e(TAG, Camera.getNumberOfCameras()+">>>>>>>>>>>>>>>>");
         mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
@@ -182,16 +323,153 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         downloadFeature=new DownloadFeature();
         downloadFeature.attachView(this);
         setParam();
+        Intent intent = new Intent(this, MdUsbService.class);
+        bindService(intent, mdSrvConn, Service.BIND_AUTO_CREATE);
+        PackageInfo pi = null;
+        try {
+            pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+            versionName.setText(pi.versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+
         mEngineType =  SpeechConstant.TYPE_LOCAL;
         mTts.startSpeaking("初始化成功", mTtsListener);
         realm = Realm.getDefaultInstance();
-        RealmResults<Person> allAsync = realm.where(Person.class).findAll();
-        arrayList.addAll(realm.copyFromRealm(allAsync));
+        allAsync = realm.where(Person.class).findAll();
+        workHandler.removeMessages(19);
 
     }
 
-    ArrayList <Person>arrayList = new ArrayList();
+    boolean isWorkFinish =false;
+    Handler workHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 19:
+                    if(textError==null){
+                        return;
+                    }
+                    textError.setText(getString(R.string.register_template_tip));
+                    workHandler.removeMessages(19);
+                    int state2 = getState();
+                    if (state2 == 3) {
+                        identifyModel();
+                    }
+                    if(!isWorkFinish){
+                        workHandler.sendEmptyMessageDelayed(19, 1000);
+                    }
 
+
+                    break;
+
+        }
+    }};
+    private boolean bOpen = false;//设备是否打开
+    private int[] pos = new int[1];
+    private float[] score = new float[1];
+    private boolean ret;
+    private ModelImgMng modelImgMng = new ModelImgMng();
+    private int[] tipTimes = {0, 0};//后两次次建模时用了不同手指或提取特征识别时，最多重复提醒限制3次
+    private int lastTouchState = 0;//记录上一次的触摸状态
+    private int modOkProgress = 0;
+    public int getState() {
+        if (!bOpen) {
+            modOkProgress = 0;
+            modelImgMng.reset();
+            bOpen = mdDeviceBinder.openDevice(0);//开启指定索引的设备
+            if (bOpen) {
+                Log.e(TAG, "open device success");
+            } else {
+                Log.e(TAG, "open device failed,stop identifying and modeling.");
+
+            }
+        }
+            int state = mdDeviceBinder.getDeviceTouchState(0);
+            if (state != 3) {
+                if (lastTouchState != 0) {
+                    mdDeviceBinder.setDeviceLed(0, MdUsbService.getFvColorRED(), true);
+                }
+                lastTouchState = 0;
+            }
+            if (state == 3) {
+                //返回值state=3表检测到了双Touch触摸,返回1表示仅指腹触碰，返回2表示仅指尖触碰，返回0表示未检测到触碰
+                if (lastTouchState == 3) {
+                    textError.setText(getString(R.string.move_finger));
+                    return 4;
+                }
+                lastTouchState = 3;
+                mdDeviceBinder.setDeviceLed(0, MdUsbService.getFvColorGREEN(), false);
+                //optional way 3
+                img = mdDeviceBinder.tryGrabImg(0);
+                if (img == null) {
+                    Log.e(TAG, "get img failed,please try again");
+                }
+            }
+            return state;
+        }
+
+    public void identifyModel() {
+        byte[] feature = MdUsbService.extractImgModel(img, null, null);
+
+        if (feature == null) {
+            Log.e(TAG, "extractImgModel get feature from img fail,retry soon");
+        } else {
+            if (identifyNewImg(img, pos, score)) {//比对及判断得分放到identifyNewImg()内实现
+                Log.e(TAG, "identify success(pos=" + pos[0] + ")");
+                mdDeviceBinder.closeDevice(0);
+                bOpen = false;
+                textError.setText(getString(R.string.check_successful));
+            } else {
+                Log.e("identify fail,", "pos=" + pos[0]);
+
+            }
+        }
+
+    }
+    private boolean identifyNewImg(final byte[] img, int[] pos, float[] score) {
+        boolean identifyResult = false;
+        String[] uidss = new String[allAsync.size()];
+        Log.e(TAG, "identifyNewImg: " + uidss.length);
+        StringBuilder builder = new StringBuilder();
+        for (int x = 0; x < allAsync.size(); x++) {
+            builder.append(allAsync.get(x).getFeature());
+            uidss[x] = allAsync.get(x).getUid();
+
+        }
+        byte[] allFeaturesBytes = HexUtil.hexStringToByte(builder.toString());
+        builder.delete(0, builder.length());
+        Log.e(TAG, "allFeaturesBytes: " + allFeaturesBytes.length);
+        //比对是否通过
+        identifyResult = MicroFingerVein.fv_index(allFeaturesBytes, allFeaturesBytes.length / 3352, img, pos, score);
+        Log.e(TAG, "identifyResult: " + identifyResult);
+        identifyResult = identifyResult && score[0] > IDENTIFY_SCORE_THRESHOLD;//得分是否达标
+        Log.e(TAG, "identifyResult: " + identifyResult);
+
+        if (identifyResult) {//比对通过且得分达标时打印此手指绑定的用户名
+            mTts.startSpeaking(getResources().getString(R.string.successful_open),mTtsListener);
+            SharedPreferences sharedPreferences=getSharedPreferences("user_info",0);
+            gpiostr=sharedPreferences.getString("gpiotext","");
+            Logger.e("LockAcitvity"+"==========="+gpiostr);
+            try {
+                Gpio.gpioInt(gpiostr);
+                Thread.sleep(400);
+                Gpio.set(gpiostr,48);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Gpio.set(gpiostr,49);
+            textError.setText(getString(R.string.check_success));
+            return identifyResult;
+        } else {
+            textError.setText(getString(R.string.check_failed));
+            return identifyResult;
+        }
+
+
+    }
+    private byte[] img;
     /**
      * 初始化监听。
      */
@@ -493,7 +771,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
     }
 
     ConnectivityManager connectivityManager;
-    @OnClick({ R.id.button02, R.id.button1, R.id.button2, R.id.button3, R.id.button4,R.id.button5,R.id.button6, R.id.button7,R.id.head_text_02})
+    @OnClick({ R.id.button02, R.id.button1, R.id.button2, R.id.button3, R.id.button4,R.id.button5,R.id.button6, R.id.button7,R.id.head_text_02,R.id.button8})
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.button02:
@@ -547,6 +825,11 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                     pwdmodel="2";
                     exitAlertDialog1=new ExitAlertDialog1(LockActivity.this);
                     exitAlertDialog1.show();
+                break;
+                case R.id.button8:
+                    isWorkFinish=true;
+                    workHandler.removeMessages(19);
+                    startActivity(new Intent(this,NewMainActivity.class));
                 break;
             default:
                 break;
@@ -608,6 +891,10 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         if (gpio==null){
             userinfo.edit().putString("gpiotext","1067").commit();
         }
+        if(isWorkFinish){
+            workHandler.sendEmptyMessage(19);
+            isWorkFinish =false;
+        }
         gpiotext=userinfo.getString(gpiotext,"");
         Gpio.gpioInt(gpiotext);
         Gpio.set(gpiotext,48);
@@ -621,7 +908,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
         super.onStart();
         mesReceiver = new MesReceiver();
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(LockActivity.ACTION_UPDATEUI);
+        intentFilter.addAction(BaseApplication.ACTION_UPDATEUI);
         registerReceiver(mesReceiver, intentFilter);
         isopenCabinet=new IsopenCabinet();
         isopenCabinet.attachView(this);
@@ -727,7 +1014,9 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
             mTts.destroy();
         }
         realm.close();
-        EventBus.getDefault().unregister(this);
+        unbindService(mdSrvConn);
+        workHandler.removeMessages(19);
+        workHandler.removeCallbacksAndMessages(null);
         unregisterReceiver(mesReceiver);
         if(Camera.getNumberOfCameras()!=0){
             mFRAbsLoop.shutdown();
@@ -784,6 +1073,7 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                 AFR_FSDKMatching score = new AFR_FSDKMatching();
                 float max = 0.0f;
                 String name = null;
+                ((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.loadFaces();
                 Log.e(TAG, "loop: " + ((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.mFaceList.size());
                 if (((BaseApplication) getApplicationContext().getApplicationContext()).mFaceDB.mFaceList.size() > 0) {
                     //是否识别成功(如果第一次没成功就再次循环验证一次)
@@ -797,14 +1087,20 @@ public class LockActivity extends BaseAppCompatActivity implements IsopenCabinet
                         }
                     }
                     if (max > 0.60f) {
-                        SharedPreferences userInfo = getSharedPreferences("user_info", 0);
-                        long secondTime = System.currentTimeMillis();
-                        if (secondTime - firstTime > 3000) {
-                            //找到相关住户执行开门
-                            firstTime = secondTime;
-                            Log.d(TAG, "fit Score:" + max + ", NAME:" + name);
-                            deviceId = userInfo.getString("deviceId", "");
-                            isopenCabinet.isopen(deviceId,name,"face");
+                        if(name.contains("管理员")){
+                            workHandler.removeMessages(19);
+                            isWorkFinish=true;
+                           startActivity(new Intent(LockActivity.this,NewMainActivity.class));
+                        }else {
+                            SharedPreferences userInfo = getSharedPreferences("user_info", 0);
+                            long secondTime = System.currentTimeMillis();
+                            if (secondTime - firstTime > 3000) {
+                                //找到相关住户执行开门
+                                firstTime = secondTime;
+                                Log.d(TAG, "fit Score:" + max + ", NAME:" + name);
+                                deviceId = userInfo.getString("deviceId", "");
+                                isopenCabinet.isopen(deviceId,name,"face");
+                            }
                         }
 
                     } else {
@@ -934,6 +1230,10 @@ private long firstTime=0;
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             return true;
         } else {
+            if(keyCode==20){
+
+                return true;
+            }
             return super.onKeyDown(keyCode, event);
         }
     }

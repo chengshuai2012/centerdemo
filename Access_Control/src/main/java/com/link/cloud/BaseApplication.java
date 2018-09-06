@@ -1,5 +1,6 @@
 
 package com.link.cloud;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -12,6 +13,8 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.support.multidex.MultiDex;
 import android.support.multidex.MultiDexApplication;
 import android.util.Log;
@@ -59,7 +62,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
+
+import io.realm.Realm;
+import io.realm.RealmConfiguration;
 
 /**
  * Description：BaseApplication
@@ -141,6 +149,13 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
                 sendBroadcast(countIntent);
             }
         });
+        Realm.init(this);
+//自定义配置
+        RealmConfiguration configuration = new RealmConfiguration.Builder()
+                .name("myRealm.realm")
+                .deleteRealmIfMigrationNeeded()
+                .build();
+        Realm.setDefaultConfiguration(configuration);
         try {
             ApplicationInfo appInfo = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
             DEBUG = appInfo.metaData.getBoolean("DEBUG");
@@ -157,7 +172,105 @@ public class BaseApplication extends MultiDexApplication  implements GetDeviceID
         presenter.attachView(this);
         initCloudChannel(this);
         MobclickAgent.setScenarioType(this, MobclickAgent.EScenarioType.E_UM_NORMAL);
+        handler.sendEmptyMessage(1);
+    }
+    public static final String ACTION_UPDATEUI = "com.link.cloud.updateTiem";
+    Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            handler.removeCallbacksAndMessages(null);
+            switch (msg.what){
+                case 1:
+                    handler.removeMessages(1);
+                    if(time==null){
+                        time=new Intent();
+                    }
+                    time.setAction(ACTION_UPDATEUI);
+                    time.putExtra("timethisStr",getthisTime());
+                    time.putExtra("timeStr",getTime());
+                    time.putExtra("timeData",getData());
+                    sendBroadcast(time);
+                    handler.sendEmptyMessageDelayed(1,1000);
+                    break;
+            }
 
+        }
+    };
+    public String getthisTime(){
+        final Calendar c = Calendar.getInstance();
+        c.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+        int mtime=c.get(Calendar.HOUR_OF_DAY);
+        int mHour = c.get(Calendar.HOUR);//时
+        int mMinute = c.get(Calendar.MINUTE);//分
+        int seconds=c.get(Calendar.SECOND);
+        return checknum(mtime)+":"+checknum(mMinute)+":"+checknum(seconds);
+    }
+    Intent time;
+    //获得当前年月日时分秒星期
+    public String getData(){
+        String timeStr=null;
+        final Calendar c = Calendar.getInstance();
+        c.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+        String mYear = String.valueOf(c.get(Calendar.YEAR)); // 获取当前年份
+        String mMonth = String.valueOf(c.get(Calendar.MONTH) + 1);// 获取当前月份
+        String mDay = String.valueOf(c.get(Calendar.DAY_OF_MONTH));// 获取当前月份的日期号码
+        String mWay = String.valueOf(c.get(Calendar.DAY_OF_WEEK));
+        int mtime=c.get(Calendar.HOUR_OF_DAY);
+        int mHour = c.get(Calendar.HOUR);//时
+        int mMinute = c.get(Calendar.MINUTE);//分
+        int seconds=c.get(Calendar.SECOND);
+        if (mtime>=0&&mtime<=5){
+            timeStr="凌晨";
+        }else if (mtime>5&&mtime<8){
+            timeStr="早晨";
+        }else if(mtime>8&&mtime<12){
+            timeStr="上午";
+        }else if(mtime>=12&&mtime<14){
+            timeStr="中午";
+        }else if(mtime>=14&&mtime<18){
+            timeStr="下午";
+        }else if(mtime>=18&&mtime<19){
+            timeStr="傍晚";
+        }else if(mtime>=19&&mtime<=22){
+            timeStr="晚上";
+        }else if(mtime>22){
+            timeStr="深夜";
+        }
+        if("1".equals(mWay)){
+            mWay ="天";
+        }else if("2".equals(mWay)){
+            mWay ="一";
+        }else if("3".equals(mWay)){
+            mWay ="二";
+        }else if("4".equals(mWay)){
+            mWay ="三";
+        }else if("5".equals(mWay)){
+            mWay ="四";
+        }else if("6".equals(mWay)){
+            mWay ="五";
+        }else if("7".equals(mWay)){
+            mWay ="六";
+        }
+        return mMonth + "月" + mDay+"日"+"|"+"星期"+mWay;
+    }
+    public String getTime(){
+        final Calendar c = Calendar.getInstance();
+        c.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+        int mtime=c.get(Calendar.HOUR_OF_DAY);
+        int mHour = c.get(Calendar.HOUR);//时
+        int mMinute = c.get(Calendar.MINUTE);//分
+        int seconds=c.get(Calendar.SECOND);
+        return checknum(mHour)+":"+checknum(mMinute);
+    }
+    private String checknum(int num){
+        String strnum=null;
+        if (num<10){
+            strnum="0"+num;
+        }else {
+            strnum=num+"";
+        }
+        return strnum;
     }
     private List<Person> people = new ArrayList<>();
     public List<Person> getPerson(){

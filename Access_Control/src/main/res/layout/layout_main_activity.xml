@@ -44,15 +44,15 @@
                 <LinearLayout
 
                     android:layout_width="match_parent"
-                    android:layout_height="80px"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
                     <Button
                         android:id="@+id/bt_main_bind"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_width="wrap_content"
+                        android:layout_height="80dp"
                         android:layout_weight="1"
                         android:background="@drawable/main_botton"
                         android:gravity="center"
@@ -67,9 +67,9 @@
 
                     <Button
                         android:id="@+id/bt_main_bind_face"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginLeft="20dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="80dp"
+                        android:layout_marginTop="40dp"
                         android:layout_weight="1"
                         android:background="@drawable/main_botton"
                         android:gravity="center"
@@ -85,20 +85,5 @@
 
 
             </LinearLayout>
-    <RelativeLayout
-        android:layout_width="wrap_content"
-        android:layout_height="100px"
-        android:layout_alignParentBottom="true"
-        android:layout_marginTop="40px">
 
-        <TextView
-            android:id="@+id/versionName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:layout_marginLeft="10dp"
-            android:text="2.2.4"
-            android:textColor="@color/white"
-            android:textSize="20sp" />
-    </RelativeLayout>
 </RelativeLayout>

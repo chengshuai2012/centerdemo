@@ -195,10 +195,9 @@ public class RegisterFragment_One extends BaseFragment implements RegisterTaskCo
     @Override
     public void onSuccess(Member memberInfo) {
         this.showProgress(false);
-        callBackValue.setActivtyChange("2");
+        callBackValue.setActivtyChange("3");
         if (memberInfo != null) {
 //            this.userMenber = memberInfo;
-            this.showProgress(false);
                 RegisterFragment_Two memberInfoFragment = RegisterFragment_Two.newInstance(memberInfo);
                 ((BindVeinMainFragment) getParentFragment()).addFragment(memberInfoFragment, 1);
 //            }

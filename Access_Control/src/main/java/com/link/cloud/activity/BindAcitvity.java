@@ -3,18 +3,24 @@ package com.link.cloud.activity;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.Service;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
@@ -24,6 +30,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.alibaba.sdk.android.ams.common.util.HexUtil;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.SpeechConstant;
@@ -31,21 +38,29 @@ import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
 import com.iflytek.cloud.util.ResourceUtil;
+import com.link.cloud.BaseApplication;
 import com.link.cloud.R;
 import com.link.cloud.base.ApiException;
 import com.link.cloud.bean.Member;
+import com.link.cloud.bean.Person;
 import com.link.cloud.bean.RestResponse;
 import com.link.cloud.contract.BindTaskContract;
 import com.link.cloud.contract.SendLogMessageTastContract;
 import com.link.cloud.core.BaseAppCompatActivity;
 import com.link.cloud.setting.TtsSettings;
+import com.link.cloud.venue.MdDevice;
+import com.link.cloud.venue.MdUsbService;
+import com.link.cloud.venue.ModelImgMng;
 import com.link.cloud.view.NoScrollViewPager;
 import com.orhanobut.logger.Logger;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.Bind;
 import butterknife.OnClick;
+import io.realm.Realm;
+import md.com.sdk.MicroFingerVein;
 
 
 /**
@@ -116,7 +131,7 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
 
     @Bind(R.id.mian_text_error)
 
-    TextView text_error;
+    TextView textError;
 
     @Bind(R.id.text_tile)
 
@@ -160,8 +175,8 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
 
     SendLogMessageTastContract sendLogMessageTastContract;
 
-
-
+    Realm realm;
+    boolean isWorkFinsh =false;
     @Override
 
     public void onCreate(Bundle savedInstanceState) {
@@ -169,9 +184,10 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         getWindow().setFlags(WindowManager.LayoutParams. FLAG_FULLSCREEN ,WindowManager.LayoutParams. FLAG_FULLSCREEN);
-
+        Intent intent = new Intent(this, MdUsbService.class);
+        bindService(intent, mdSrvConn, Service.BIND_AUTO_CREATE);
         super.onCreate(savedInstanceState);
-
+        realm= Realm.getDefaultInstance();
         // 初始化合成对象
 
         mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
@@ -518,7 +534,7 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
                 break;
 
             case "3":
-
+                workHandler.sendEmptyMessage(18);
                 mTts.startSpeaking(getResources().getString(R.string.put_finger),mTtsListener);
 
                 layout_error_text.setVisibility(View.VISIBLE);
@@ -591,7 +607,7 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
 
         IntentFilter intentFilter = new IntentFilter();
 
-        intentFilter.addAction(NewMainActivity.ACTION_UPDATEUI);
+        intentFilter.addAction(BaseApplication.ACTION_UPDATEUI);
 
         registerReceiver(mesReceiver, intentFilter);
 
@@ -676,7 +692,311 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
         onError(e);
 
     }
+    private List<MdDevice> mdDevicesList = new ArrayList<MdDevice>();
+    private final int MSG_REFRESH_LIST = 0;
+    private List<MdDevice> getDevList() {
 
+        List<MdDevice> mdDevList = new ArrayList<MdDevice>();
+
+        if (mdDeviceBinder != null) {
+
+            int deviceCount = MicroFingerVein.fvdev_get_count();
+
+            for (int i = 0; i < deviceCount; i++) {
+
+                MdDevice mdDevice = new MdDevice();
+
+                mdDevice.setNo(i);
+
+                mdDevice.setIndex(mdDeviceBinder.getDeviceNo(i));
+
+                mdDevList.add(mdDevice);
+
+            }
+
+        } else {
+
+            Log.e(TAG, "microFingerVein not initialized by MdUsbService yet,wait a moment...");
+
+        }
+
+        return mdDevList;
+
+    }
+    public static MdDevice mdDevice;
+
+    public MdUsbService.MyBinder mdDeviceBinder;
+    private Handler listManageH = new Handler(new Handler.Callback() {
+
+        @Override
+
+        public boolean handleMessage(Message msg) {
+
+            switch (msg.what) {
+
+                case MSG_REFRESH_LIST: {
+
+                    mdDevicesList.clear();
+
+                    mdDevicesList = getDevList();
+
+                    if (mdDevicesList.size() > 0) {
+
+                        mdDevice = mdDevicesList.get(0);
+
+                    } else {
+
+                        listManageH.sendEmptyMessageDelayed(MSG_REFRESH_LIST, 1500L);
+
+                    }
+
+                    break;
+
+                }
+
+            }
+
+            return false;
+
+        }
+
+    });
+    private String TAG = "BindActivity";
+
+    private ServiceConnection mdSrvConn = new ServiceConnection() {
+
+        @Override
+
+        public void onServiceConnected(ComponentName name, IBinder service) {
+
+            mdDeviceBinder = (MdUsbService.MyBinder) service;
+
+
+            if (mdDeviceBinder != null) {
+
+                mdDeviceBinder.setOnUsbMsgCallback(mdUsbMsgCallback);
+
+                listManageH.sendEmptyMessage(MSG_REFRESH_LIST);
+
+                Log.e(TAG, "bind MdUsbService success.");
+
+            } else {
+
+                Log.e(TAG, "bind MdUsbService failed.");
+
+                finish();
+
+            }
+
+        }
+
+        @Override
+
+        public void onServiceDisconnected(ComponentName name) {
+
+            Log.e(TAG, "disconnect MdUsbService.");
+
+        }
+
+
+    };
+    private MdUsbService.UsbMsgCallback mdUsbMsgCallback = new MdUsbService.UsbMsgCallback() {
+
+        @Override
+
+        public void onUsbConnSuccess(String usbManufacturerName, String usbDeviceName) {
+
+            String newUsbInfo = "USB厂商：" + usbManufacturerName + "  \nUSB节点：" + usbDeviceName;
+
+            Log.e(TAG, newUsbInfo);
+
+        }
+
+        @Override
+
+        public void onUsbDisconnect() {
+
+            Log.e(TAG, "USB连接已断开");
+
+
+        }
+
+    };
+    Handler workHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 18:
+                    if(textError==null){
+                        return;
+                    }
+                    textError.setText(getString(R.string.register_template_tip));
+                    handler.removeMessages(18);
+                    int state = getState();
+                    Log.e(TAG, state + "");
+                    if (state == 3) {
+                        workModel();
+                    }
+                    if(!isWorkFinsh){
+
+                        workHandler.sendEmptyMessageDelayed(18, 1000);
+                    }
+
+
+                    break;
+
+            }
+        }};
+    private boolean bOpen = false;//设备是否打开
+    private int[] pos = new int[1];
+    private float[] score = new float[1];
+    private boolean ret;
+    private ModelImgMng modelImgMng = new ModelImgMng();
+    private int[] tipTimes = {0, 0};//后两次次建模时用了不同手指或提取特征识别时，最多重复提醒限制3次
+    private int lastTouchState = 0;//记录上一次的触摸状态
+    private int modOkProgress = 0;
+    public int getState() {
+        if (!bOpen) {
+            modOkProgress = 0;
+            modelImgMng.reset();
+            bOpen = mdDeviceBinder.openDevice(0);//开启指定索引的设备
+            if (bOpen) {
+                Log.e(TAG, "open device success");
+            } else {
+                Log.e(TAG, "open device failed,stop identifying and modeling.");
+
+            }
+        }
+        int state = mdDeviceBinder.getDeviceTouchState(0);
+        if (state != 3) {
+            if (lastTouchState != 0) {
+                mdDeviceBinder.setDeviceLed(0, MdUsbService.getFvColorRED(), true);
+            }
+            lastTouchState = 0;
+        }
+        if (state == 3) {
+            //返回值state=3表检测到了双Touch触摸,返回1表示仅指腹触碰，返回2表示仅指尖触碰，返回0表示未检测到触碰
+            if (lastTouchState == 3) {
+                textError.setText(getString(R.string.move_finger));
+                return 4;
+            }
+            lastTouchState = 3;
+            mdDeviceBinder.setDeviceLed(0, MdUsbService.getFvColorGREEN(), false);
+            //optional way 3
+            img = mdDeviceBinder.tryGrabImg(0);
+            if (img == null) {
+                Log.e(TAG, "get img failed,please try again");
+            }
+        }
+        return state;
+    }
+    private final static float MODEL_SCORE_THRESHOLD = 0.4f;
+    public void workModel() {
+        float[] quaScore = {0f, 0f, 0f, 0f};
+        int quaRtn = MdUsbService.qualityImgEx(img, quaScore);
+        String oneResult = ("quality return=" + quaRtn) + ",result=" + quaScore[0] + ",score=" + quaScore[1] + ",fLeakRatio=" + quaScore[2] + ",fPress=" + quaScore[3];
+        Log.e(TAG, oneResult);
+        int quality = (int) quaScore[0];
+        if (quality != 0) {
+
+            textError.setText(getString(R.string.move_finger));
+        }
+        byte[] feature = MdUsbService.extractImgModel(img, null, null);
+        if (feature == null) {
+            textError.setText(getString(R.string.move_finger));
+        } else {
+            modOkProgress++;
+            if (modOkProgress == 1) {//first model
+                tipTimes[0] = 0;
+                tipTimes[1] = 0;
+                modelImgMng.setImg1(img);
+                modelImgMng.setFeature1(feature);
+                textError.setText(getString(R.string.again_finger));
+            } else if (modOkProgress == 2) {//second model
+                ret = MdUsbService.fvSearchFeature(modelImgMng.getFeature1(), 1, img, pos, score);
+                if (ret && score[0] > MODEL_SCORE_THRESHOLD) {
+                    feature = MdUsbService.extractImgModel(img, null, null);//无须传入第一张图片，第三次混合特征值时才同时传入3张图；
+                    if (feature != null) {
+                        tipTimes[0] = 0;
+                        tipTimes[1] = 0;
+                        modelImgMng.setImg2(img);
+                        modelImgMng.setFeature2(feature);
+                        textError.setText(getString(R.string.again_finger));
+                    } else {//第二次建模从图片中取特征值无效
+                        modOkProgress = 1;
+                        if (++tipTimes[0] <= 3) {
+                            textError.setText(getString(R.string.same_finger));
+                        } else {//连续超过3次放了不同手指则忽略此次建模重来
+                            modOkProgress = 0;
+                            modelImgMng.reset();
+                            textError.setText(getString(R.string.same_finger));
+                        }
+                    }
+                } else {
+                    modOkProgress = 1;
+                    if (++tipTimes[0] <= 3) {
+                        textError.setText(getString(R.string.same_finger));
+                    } else {//连续超过3次放了不同手指则忽略此次建模重来
+                        modOkProgress = 0;
+                        modelImgMng.reset();
+                        textError.setText(getString(R.string.same_finger));
+                    }
+                }
+            } else if (modOkProgress == 3) {//third model
+                ret = MdUsbService.fvSearchFeature(modelImgMng.getFeature2(), 1, img, pos, score);
+                if (ret && score[0] > MODEL_SCORE_THRESHOLD) {
+                    feature = MdUsbService.extractImgModel(modelImgMng.getImg1(), modelImgMng.getImg2(), img);
+                    if (feature != null) {//成功生成一个3次建模并融合的融合特征数组
+                        tipTimes[0] = 0;
+                        tipTimes[1] = 0;
+                        modelImgMng.setImg3(img);
+                        modelImgMng.setFeature3(feature);
+                        //----------------------------------------------------------
+                        //if(isMdDebugOpen) {//保存3次建模后的3张图片用于分析异常情况;
+                        //    String tips="DEBUG:本次建模图片及日志已经保存到:\n"+MdDebugger.debugModelSrcByTimeMillis(modelImgMng.getImg1(),modelImgMng.getImg2(),modelImgMng.getImg3());
+                        //    Log.e(TAG,tips);
+                        //    handler.obtainMessage(MSG_SHOW_LOG,tips).sendToTarget();
+                        //}
+                        //----------------------------------------------------------
+                            final Person person = new Person();
+                            person.setUid(System.currentTimeMillis()+"");
+                            person.setFeature(HexUtil.bytesToHexString(feature));
+                            realm.executeTransaction(new Realm.Transaction() {
+                                @Override
+                                public void execute(Realm realm) {
+                                    realm.copyToRealm(person);
+                                }
+                            });
+                        isWorkFinsh = true;
+                        modelImgMng.reset();
+                        fingersign();
+                        mdDeviceBinder.closeDevice(0);
+                        bOpen = false;
+                    } else {//第三次建模从图片中取特征值无效
+                        modOkProgress = 2;
+                        if (++tipTimes[1] <= 3) {
+                            textError.setText(getString(R.string.same_finger));
+                        }
+                    }
+                } else {
+                    modOkProgress = 2;
+                    if (++tipTimes[1] <= 3) {
+                        textError.setText(getString(R.string.same_finger));
+                    } else {//连续超过3次放了不同手指则忽略此次建模重来
+                        modOkProgress = 0;
+                        modelImgMng.reset();
+                        textError.setText(getString(R.string.same_finger));
+                    }
+                }
+            } else {
+                modOkProgress = 0;
+                modelImgMng.reset();
+            }
+        }
+
+    }
+    private byte[] img;
     @Override
 
     public void onError(ApiException e) {
@@ -687,7 +1007,7 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
 
         Logger.e("BindActivity"+syt);
 
-        text_error.setText(syt);
+        textError.setText(syt);
 
         mTts.startSpeaking(syt,mTtsListener);
 
@@ -701,6 +1021,9 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
         super.onDestroy();
 
         unregisterReceiver(mesReceiver);
+        unbindService(mdSrvConn);
+        isWorkFinsh=true;
+        workHandler.removeCallbacksAndMessages(null);
 
     }
 
@@ -729,7 +1052,7 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
 
         setActivtyChange("4");
 
-        text_error.setText(R.string.bing_success);
+        textError.setText(R.string.bing_success);
 
         fingersign();
 
@@ -737,7 +1060,8 @@ public class BindAcitvity extends BaseAppCompatActivity implements CallBackValue
     }
     Handler handler = new Handler();
     private void fingersign(){
-
+        textError.setText(R.string.bing_success);
+        setActivtyChange("4");
         if (handler!=null) {
 
             handler.postDelayed(new Runnable() {

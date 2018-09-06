@@ -13,7 +13,6 @@ import android.widget.TextView;
 import com.link.cloud.R;
 import com.link.cloud.base.ApiException;
 import com.link.cloud.bean.Member;
-import com.link.cloud.constant.Constant;
 import com.link.cloud.contract.BindTaskContract;
 import com.link.cloud.core.BaseFragment;
 import com.orhanobut.logger.Logger;
@@ -75,9 +74,6 @@ public class RegisterFragment_Two extends BaseFragment {
     }
     public static RegisterFragment_Two newInstance(Member memberInfo) {
         RegisterFragment_Two fragment = new RegisterFragment_Two();
-        Bundle args = new Bundle();
-        args.putSerializable(Constant.EXTRAS_MEMBER, memberInfo);
-        fragment.setArguments(args);
         return fragment;
     }
     @Override
@@ -100,10 +96,6 @@ public class RegisterFragment_Two extends BaseFragment {
         Logger.e("RegisterFragment_Two"+"initListeners");
     }
 
-//    @Override
-//    public void handleTips(String tips) {
-//        Logger.e("RegisterFragment_Two"+"handleTips");
-//    }
 
     @Override
     protected void onInvisible() {
@@ -112,47 +104,8 @@ public class RegisterFragment_Two extends BaseFragment {
 
     @Override
     protected void initViews(View self, Bundle savedInstanceState) {
-//        Logger.e("RegisterFragment_Two"+"initViews");
-//        Bundle bundle = getArguments();
-//        if (bundle != null) {
-//            mMemberInfo = (Member) bundle.getSerializable(Constant.EXTRAS_MEMBER);
-//            userInfo = acitvity.getSharedPreferences("user_info_bind", 0);
-//            userInfo.edit().putString("userType",mMemberInfo.getMemberdata().getUserInfo().getUserType()).commit();
-//            userInfo.edit().putString("uid",mMemberInfo.getMemberdata().getUserInfo().getUid()).commit();
-//            userInfo.edit().putString("numberValue",mMemberInfo.getMemberdata().getUserInfo().getPhone()).commit();
-//            userInfo.edit().putInt("sex",mMemberInfo.getMemberdata().getUserInfo().getSex()).commit();
-//            userInfo.edit().putString("img",mMemberInfo.getMemberdata().getUserInfo().getImg());
-//            userInfo.edit().putString("name",mMemberInfo.getMemberdata().getUserInfo().getName()).commit();
-//            if ("1".equals(mMemberInfo.getMemberdata().getUserInfo().getUserType()))
-//            {
-//                user_Type.setText(R.string.member);
-//            }else if("2".equals(mMemberInfo.getMemberdata().getUserInfo().getUserType())){
-//                user_Type.setText(R.string.employee);
-//            }
-////            else if(mMemberInfo.getMemberdata().getUserInfo().getUserType()==2){
-////                user_Type.setText("教练");
-////            }
-//            menber_name.setText(mMemberInfo.getMemberdata().getUserInfo().getName());
-//            String phoneNum =mMemberInfo.getMemberdata().getUserInfo().getPhone();
-//            if (mMemberInfo.getMemberdata().getUserInfo().getPhone().length() == 11) {
-//                phoneNum = phoneNum.substring(0, 3) + "****" + phoneNum.substring(7, phoneNum.length());
-//            }
-//            menber_phone.setText(phoneNum);
-//            if (mMemberInfo.getMemberdata().getUserInfo().getSex()!=0){
-//                menber_sex.setText(R.string.girl);
-//            }else {
-//                menber_sex.setText(R.string.man);
-//            }
-//            try {
-//                cardName.setText(mMemberInfo.getMemberdata().getMemberCard()[0].getCardName());
-//                cardValue.setText(mMemberInfo.getMemberdata().getMemberCard()[0].getEndTime());
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//
-//        }
-
-
+        layout_two.setVisibility(View.GONE);
+        layout_three.setVisibility(View.VISIBLE);
     }
 
 
@@ -162,25 +115,15 @@ public class RegisterFragment_Two extends BaseFragment {
     }
     @Override
     protected int getLayoutId() {
-        Logger.e("RegisterFragment_Two"+"getLayoutId");
         return R.layout.layout_bind_member;
     }
-//    @Override
-//    public void bindSuccess(Member returnBean) throws InterruptedException {
-//        Logger.e("RegisterFragment_Two"+"bindSuccess");
-//    }
+
     @OnClick({R.id.bind_member_next})
     public void onClick(View view){
-                Logger.e("RegisterFragment_Two"+"onClick");
-                callBackValue.setActivtyChange("3");
-                layout_two.setVisibility(View.GONE);
-                layout_three.setVisibility(View.VISIBLE);
-//                RegisterFragment_Three memberInfoFragment = RegisterFragment_Three.newInstance(mMemberInfo);
-//              ((BindVeinMainFragment) getParentFragment()).addFragment(memberInfoFragment, 2);
+
     }
     @Override
     public void onDestroy() {
-//        Logger.e("RegisterFragment_Two"+"onDestroy");
         super.onDestroy();
     }
 }

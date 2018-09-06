@@ -8,7 +8,6 @@ import com.link.cloud.utils.Utils;
 import com.orhanobut.logger.Logger;
 import com.retrofit2.converter.gson.GsonConverterFactory;
 
-
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -38,8 +37,8 @@ public class BaseApi {
     //长缓存有效期为7天
     public static final int CACHE_STALE_LONG = 60 * 60 * 24 * 7;
     public static BaseApi getInstance() {
-        if (ourInstance == null)
-            ourInstance = new BaseApi();
+//        if (ourInstance == null)
+        ourInstance = new BaseApi();
         return ourInstance;
     }
     private BaseApi() {
@@ -53,22 +52,21 @@ public class BaseApi {
         this.baseService = retrofit.create(BaseService.class);
     }
     private void initOkHttpClient() {
-       HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-      interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         if (mOkHttpClient == null) {
             synchronized (BaseApi.class) {
                 if (mOkHttpClient == null) {
                     // 指定缓存路径,缓存大小100Mb
                     Cache cache = new Cache(new File(BaseApplication.getInstance().getApplicationContext().getCacheDir(), "HttpCache"),
                             1024 * 1024 * 100);
-                    mOkHttpClient = new OkHttpClient
-                            .Builder()
+                    mOkHttpClient = new OkHttpClient.Builder()
                             .retryOnConnectionFailure(false)
                             .cache(cache)
                             .addInterceptor(mRewriteCacheControlInterceptor)
                             .addNetworkInterceptor(mRewriteCacheControlInterceptor)
                             .addInterceptor(interceptor)
-                            .connectTimeout(20, TimeUnit.SECONDS)
+                            .connectTimeout(30, TimeUnit.SECONDS)
                             .readTimeout(20, TimeUnit.SECONDS)//设置读取超时时间
                             .writeTimeout(20, TimeUnit.SECONDS)//设置写入超时时间
                             .build();
@@ -85,23 +83,27 @@ public class BaseApi {
         private static final String F_HEADERS = "%s";
         private static final String F_RESPONSE = F_BREAK + "Response: %d";
         private static final String F_BODY = "body: %s";
+
         private static final String F_BREAKER = F_BREAK + "-------------------------------------------" + F_BREAK;
         private static final String F_REQUEST_WITHOUT_BODY = F_URL + F_TIME + F_BREAK + F_HEADERS;
         private static final String F_RESPONSE_WITHOUT_BODY = F_RESPONSE + F_BREAK + F_HEADERS + F_BREAKER;
         private static final String F_REQUEST_WITH_BODY = F_URL + F_TIME + F_BREAK + F_HEADERS + F_BODY + F_BREAK;
         private static final String F_RESPONSE_WITH_BODY = F_RESPONSE + F_BREAK + F_HEADERS + F_BODY + F_BREAK + F_BREAKER;
+
         @Override
         public Response intercept(Chain chain) throws IOException {
             Request original = chain.request();
+            JsonObject postBody = bodyToJsonObject(original.body());
+            if (postBody == null) {
+                Logger.e(postBody+">>>>>>>>>>>>>>>>>>>>>>>>");
+                return chain.proceed(original);
+            }
             String code = "link";
             String datetime = System.currentTimeMillis() + "";
             String appkey = Utils.getMetaData(Constant.APP_KEY);
             String sign = Utils.generateSign(code, appkey, datetime);
             Request.Builder requestBuilder = original.newBuilder();
-            JsonObject postBody = bodyToJsonObject(original.body());
-            if (postBody == null) {
-                postBody = new JsonObject();
-            }
+
             postBody.addProperty("key", appkey);
             postBody.addProperty("datetime", datetime);
             postBody.addProperty("code", code);
@@ -109,6 +111,7 @@ public class BaseApi {
             RequestBody requestBody = RequestBody.create(MediaType.parse("application/json;charset=UTF-8"), postBody.toString());
             requestBuilder.post(requestBody);
             Request request = requestBuilder.build();
+
             //return chain.proceed(request);
             long t1 = System.nanoTime();
             Response originalResponse = chain.proceed(request);
@@ -126,6 +129,8 @@ public class BaseApi {
                     Logger.e(String.format("DELETE " + F_REQUEST_WITHOUT_BODY + F_RESPONSE_WITHOUT_BODY, request.url(), time, request.headers(), originalResponse.code(), originalResponse.headers()));
                 }
             }
+
+
             return originalResponse;
         }
 

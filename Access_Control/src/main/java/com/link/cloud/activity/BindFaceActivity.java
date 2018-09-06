@@ -46,6 +46,7 @@ import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechSynthesizer;
 import com.iflytek.cloud.SynthesizerListener;
 import com.iflytek.cloud.util.ResourceUtil;
+import com.link.cloud.BaseApplication;
 import com.link.cloud.R;
 import com.link.cloud.base.ApiException;
 import com.link.cloud.bean.FaceBindBean;
@@ -374,7 +375,7 @@ public class BindFaceActivity extends BaseAppCompatActivity implements CallBackV
     protected void initData() {
         mesReceiver=new MesReceiver();
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(NewMainActivity.ACTION_UPDATEUI);
+        intentFilter.addAction(BaseApplication.ACTION_UPDATEUI);
         registerReceiver(mesReceiver, intentFilter);
     }
 
@@ -451,25 +452,8 @@ public class BindFaceActivity extends BaseAppCompatActivity implements CallBackV
                 finish();
                 break;
             case R.id.confirm:
-                if(!isFinish){
-                    setActivtyChange("3");
-                   mCameraRotate = 0;
-                   mCameraMirror = false;
-                    mWidth = 640;
-                    mHeight = 480;
-                    mFormat = ImageFormat.NV21;
-                    svCameraSurfaceview .setOnTouchListener(this);
-                    mGLSurfaceView = (CameraSurfaceView) findViewById(R.id.surfaceView);
-                    mGLSurfaceView.setOnCameraListener(this);
-                    mGLSurfaceView.setupGLSurafceView(svCameraSurfaceview, true, mCameraMirror, mCameraRotate);
-                    mGLSurfaceView.debug_print_fps(false, false);
-                    faceRegister.setVisibility(View.VISIBLE);
-                    memberInfo.setVisibility(View.GONE);
-               }else {
-                        finish();
-                    }
-
-        break;
+                finish();
+                break;
             case R.id.take_photo:
                 ExtByteArrayOutputStream ops = new ExtByteArrayOutputStream();
                 YuvImage yuv = new YuvImage(clone, ImageFormat.NV21, 640, 480, null);
@@ -698,49 +682,28 @@ public class BindFaceActivity extends BaseAppCompatActivity implements CallBackV
         faceRegister.setVisibility(View.GONE);
         setActivtyChange("4");
         memberInfo.setVisibility(View.VISIBLE);
-        name.setText(faceBindBean.getData().getUserInfo().getName());
-        name.setText(faceBindBean.getData().getUserInfo().getName());
-        tel.setText(faceBindBean.getData().getUserInfo().getPhone());
-        int userType = faceBindBean.getData().getUserInfo().getUserType();
-        if (1==userType) {
-            cardNum.setText(R.string.member);
-        } else if (2==userType) {
-            cardNum.setText(R.string.employee);
-        } else {
-            cardNum.setText(R.string.coach);
-        }
-        if(faceBindBean.getData().getUserInfo().getSex()==0){
-            tel.setText(R.string.man);
-        }else {
-            tel.setText(R.string.famele);
-        }
+        cardNum.setText("绑定成功");
+        introduceFace.setVisibility(View.GONE);
 
     }
     FaceBindBean faceBindBean;
     @Override
     public void onFaceSuccess(FaceBindBean faceBindBean) {
         Logger.e("RegisterFragment_OnedeviceID");
-        setActivtyChange("2");
         this.faceBindBean =faceBindBean;
+        setActivtyChange("3");
+        mCameraRotate = 0;
+        mCameraMirror = false;
+        mWidth = 640;
+        mHeight = 480;
+        mFormat = ImageFormat.NV21;
+        svCameraSurfaceview .setOnTouchListener(this);
+        mGLSurfaceView = (CameraSurfaceView) findViewById(R.id.surfaceView);
+        mGLSurfaceView.setOnCameraListener(this);
+        mGLSurfaceView.setupGLSurafceView(svCameraSurfaceview, true, mCameraMirror, mCameraRotate);
+        mGLSurfaceView.debug_print_fps(false, false);
+        faceRegister.setVisibility(View.VISIBLE);
         layout_bing_phone.setVisibility(View.INVISIBLE);
-        memberInfo.setVisibility(View.VISIBLE);
-        name.setText(faceBindBean.getData().getUserInfo().getName());
-        tel.setText(faceBindBean.getData().getUserInfo().getPhone());
-        int userType = faceBindBean.getData().getUserInfo().getUserType();
-        mTts.startSpeaking("确认信息",mTtsListener);
-        if (1==userType) {
-            cardNum.setText(R.string.member);
-        } else if (2==userType) {
-            cardNum.setText(R.string.employee);
-        } else {
-            cardNum.setText(R.string.coach);
-        }
-        try {
-            valueCout.setText(faceBindBean.getData().getMemberCardInfo().get(0).getCardName());
-            valueDate.setText(faceBindBean.getData().getMemberCardInfo().get(0).getEndTime());
-            cardNumber.setText(faceBindBean.getData().getMemberCardInfo().get(0).getCardNumber());
-        } catch (Exception e) {
-        }
     }
 
     @Override
